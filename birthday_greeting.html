@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday Monu & Chotu!</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load confetti library for visual effect -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <style>
+        /* Custom styles for a festive look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .birthday-bg {
+            background: linear-gradient(135deg, #f06b6b 0%, #ffc371 100%);
+            /* Pattern for extra flair */
+            background-image: radial-gradient(circle at center, #ffffff1a 1px, transparent 1px),
+                              radial-gradient(circle at center, #0000001a 1px, transparent 1px),
+                              linear-gradient(to right, #f06b6b, #ffc371);
+            background-size: 100px 100px;
+        }
+        .card-shadow {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        }
+        .animate-pop {
+            animation: pop-in 0.8s ease-out;
+        }
+        @keyframes pop-in {
+            0% { transform: scale(0.5) rotate(-30deg); opacity: 0; }
+            80% { transform: scale(1.05) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+    </style>
+</head>
+<body class="birthday-bg min-h-screen flex items-center justify-center p-4">
+
+    <div id="card" class="bg-white card-shadow rounded-3xl p-6 md:p-10 w-full max-w-lg text-center animate-pop transform hover:scale-[1.01] transition-transform duration-300">
+
+        <!-- Header and Main Message -->
+        <div class="space-y-4">
+            <p class="text-xl md:text-2xl font-bold text-gray-700">A Special Day For...</p>
+            <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-red-600 tracking-tight leading-none">
+                Monu
+            </h1>
+            <p class="text-3xl md:text-4xl font-extrabold text-gray-500 my-2">&</p>
+            <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-600 tracking-tight leading-none">
+                Chotu!
+            </h1>
+            <h2 class="text-4xl md:text-5xl font-extrabold text-gray-800 pt-4">
+                Happy Birthday! 🥳
+            </h2>
+        </div>
+
+        <div class="mt-8">
+            <p class="text-gray-600 mb-6 text-lg">
+                Click the button below to hear a special voice greeting and launch the celebration!
+            </p>
+            <!-- Play Button -->
+            <button id="playButton"
+                    class="w-full py-3 px-6 bg-purple-600 text-white font-bold rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-purple-300 flex items-center justify-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132c.207-.138.207-.492 0-.63z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Play Voice Greeting & Confetti!</span>
+            </button>
+
+            <!-- Status Message -->
+            <p id="statusMessage" class="mt-4 text-sm text-gray-500"></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const playButton = document.getElementById('playButton');
+            const statusMessage = document.getElementById('statusMessage');
+            let isPlaying = false;
+            
+            const userText = "Happy birthday Monu and Chotu!";
+            // IMPORTANT: If running this file outside of the Canvas environment, you MUST 
+            // replace the empty string below with your own valid API key.
+            const apiKey = ""; 
+
+            // Utility function to convert base64 to ArrayBuffer
+            function base64ToArrayBuffer(base64) {
+                const binaryString = atob(base64);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                return bytes.buffer;
+            }
+
+            // Utility function to convert PCM data (Int16Array) into a WAV Blob
+            function pcmToWav(pcm16, sampleRate) {
+                const numChannels = 1;
+                const bytesPerSample = 2;
+                const blockAlign = numChannels * bytesPerSample;
+                const byteRate = sampleRate * blockAlign;
+                const dataSize = pcm16.length * bytesPerSample;
+
+                const buffer = new ArrayBuffer(44 + dataSize);
+                const view = new DataView(buffer);
+                let offset = 0;
+
+                // RIFF identifier 'RIFF'
+                view.setUint32(offset, 0x52494646, false); offset += 4;
+                // file length
+                view.setUint32(offset, 36 + dataSize, true); offset += 4;
+                // RIFF type 'WAVE'
+                view.setUint32(offset, 0x57415645, false); offset += 4;
+                // format chunk identifier 'fmt '
+                view.setUint32(offset, 0x666d7420, false); offset += 4;
+                // format chunk length
+                view.setUint32(offset, 16, true); offset += 4;
+                // sample format (raw PCM)
+                view.setUint16(offset, 1, true); offset += 2;
+                // channel count
+                view.setUint16(offset, numChannels, true); offset += 2;
+                // sample rate
+                view.setUint32(offset, sampleRate, true); offset += 4;
+                // byte rate (SampleRate * NumChannels * BitsPerSample/8)
+                view.setUint32(offset, byteRate, true); offset += 4;
+                // block align (NumChannels * BitsPerSample/8)
+                view.setUint16(offset, blockAlign, true); offset += 2;
+                // bits per sample
+                view.setUint16(offset, 16, true); offset += 2;
+                // data chunk identifier 'data'
+                view.setUint32(offset, 0x64617461, false); offset += 4;
+                // data chunk length
+                view.setUint32(offset, dataSize, true); offset += 4;
+
+                // Write the PCM data
+                for (let i = 0; i < pcm16.length; i++) {
+                    // PCM data is signed 16-bit little-endian
+                    view.setInt16(offset, pcm16[i], true); 
+                    offset += 2;
+                }
+
+                return new Blob([view], { type: 'audio/wav' });
+            }
+
+            const startGreeting = async () => {
+                if (isPlaying) return;
+                
+                isPlaying = true;
+                playButton.disabled = true;
+                statusMessage.textContent = "🔊 Generating and Playing Voice Greeting... 🔊";
+
+                try {
+                    const payload = {
+                        contents: [{
+                            parts: [{ text: userText }]
+                        }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: {
+                                // Using the "Puck" voice for an upbeat tone
+                                voiceConfig: {
+                                    prebuiltVoiceConfig: { voiceName: "Puck" } 
+                                }
+                            }
+                        },
+                        model: "gemini-2.5-flash-preview-tts"
+                    };
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+                    let response;
+                    let retries = 0;
+                    const maxRetries = 5;
+
+                    // Exponential backoff loop for API call
+                    while (retries < maxRetries) {
+                        try {
+                            response = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+
+                            if (response.ok) {
+                                break; // Success, exit loop
+                            } else if (response.status === 429 || response.status >= 500) {
+                                // Handle rate limiting (429) or server errors (5xx)
+                                const delay = Math.pow(2, retries) * 1000;
+                                console.warn(`API call failed with status ${response.status}. Retrying in ${delay / 1000}s...`);
+                                retries++;
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                            } else {
+                                // Other client errors (e.g., 400 Bad Request)
+                                throw new Error(`API failed: ${response.statusText}`);
+                            }
+                        } catch (error) {
+                            if (retries === maxRetries - 1) throw error; 
+                            retries++;
+                            const delay = Math.pow(2, retries) * 1000;
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    }
+
+                    if (!response.ok) {
+                         throw new Error("Failed to get response after multiple retries.");
+                    }
+
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.[0];
+                    const audioData = part?.inlineData?.data;
+                    const mimeType = part?.inlineData?.mimeType;
+
+                    if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+                        // Extract sample rate from mimeType (e.g., audio/L16;rate=24000)
+                        const rateMatch = mimeType.match(/rate=(\d+)/);
+                        const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000; // Default to 24000
+
+                        // 1. Decode base64 to ArrayBuffer
+                        const pcmDataBuffer = base64ToArrayBuffer(audioData);
+                        // 2. The API returns signed PCM16 audio data
+                        const pcm16 = new Int16Array(pcmDataBuffer);
+                        // 3. Convert PCM to WAV Blob
+                        const wavBlob = pcmToWav(pcm16, sampleRate);
+                        // 4. Create playable URL
+                        const audioUrl = URL.createObjectURL(wavBlob);
+
+                        const audio = new Audio(audioUrl);
+                        audio.play();
+
+                        // Clear the object URL after the audio finishes playing
+                        audio.onended = () => {
+                            URL.revokeObjectURL(audioUrl);
+                            isPlaying = false;
+                            playButton.disabled = false;
+                            statusMessage.textContent = "Finished! Play it again!";
+                        };
+
+                        // Launch Confetti effect immediately
+                        confetti({
+                            particleCount: 150,
+                            startVelocity: 30,
+                            spread: 360,
+                            angle: 90,
+                            origin: { x: 0.5, y: 0.8 },
+                            zIndex: 1000
+                        });
+
+                    } else {
+                        throw new Error("TTS API response was invalid or missing audio data.");
+                    }
+                } catch (error) {
+                    console.error("Error during TTS generation or playback:", error);
+                    statusMessage.textContent = "Error: Could not generate voice greeting.";
+                    isPlaying = false;
+                    playButton.disabled = false;
+                }
+            };
+
+            // --- EVENT LISTENER ---
+            playButton.addEventListener('click', startGreeting);
+        });
+    </script>
+</body>
+</html>
