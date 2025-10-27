@@ -80,8 +80,8 @@
             let isPlaying = false;
             
             const userText = "Happy birthday Monu and Chotu!";
-            // IMPORTANT: If running this file outside of the Canvas environment, you MUST 
-            // replace the empty string below with your own valid API key.
+            // IMPORTANT: If you are running this file on a public host (like GitHub Pages), you MUST 
+            // replace the empty string below with your valid Gemini API key for the voice to work.
             const apiKey = ""; 
 
             // Utility function to convert base64 to ArrayBuffer
@@ -192,7 +192,7 @@
                                 await new Promise(resolve => setTimeout(resolve, delay));
                             } else {
                                 // Other client errors (e.g., 400 Bad Request)
-                                throw new Error(`API failed: ${response.statusText}`);
+                                throw new Error(`API failed with status ${response.status}. Please check your API key.`);
                             }
                         } catch (error) {
                             if (retries === maxRetries - 1) throw error; 
@@ -251,7 +251,7 @@
                     }
                 } catch (error) {
                     console.error("Error during TTS generation or playback:", error);
-                    statusMessage.textContent = "Error: Could not generate voice greeting.";
+                    statusMessage.textContent = "Error: Could not generate voice greeting. Please ensure your Gemini API key is set correctly in the code.";
                     isPlaying = false;
                     playButton.disabled = false;
                 }
